@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Escarp">
+  <!--
+    The Escarp mark, bare, for placing on the app's own dark surfaces.
+    For the launcher/tab icon use icon.svg, which puts this on a dark plate.
+
+    Three layers, so it stays crisp at any size:
+      1. the white disc
+      2. wider "channel" bars in the surrounding colour, carving the dark
+         separations out of the disc
+      3. the arms themselves, sitting inside those channels
+
+    The channels use `currentColor`, so set `color` on (or above) the <svg>
+    to whatever the mark is sitting on. It must be a DARK surface: the disc
+    is white, and the construction inverts rather than adapts on a light
+    one. That is why the icon file carries its own plate.
+  -->
+  <g color="#020504">
+    <circle cx="256" cy="256" r="180" fill="#ffffff"/>
+
+    <!-- Each arm's slot, with 12 units of clearance top and bottom. -->
+    <g fill="currentColor">
+      <rect x="236" y="175" width="226" height="54" rx="27"/>
+      <rect x="60"  y="229" width="402" height="54" rx="27"/>
+      <rect x="236" y="283" width="226" height="54" rx="27"/>
+    </g>
+
+    <!-- The arms. Middle one green and full-width; it is the whole idea. -->
+    <rect x="248" y="187" width="202" height="30" rx="15" fill="#ffffff"/>
+    <rect x="72"  y="241" width="378" height="30" rx="15" fill="#5BD24A"/>
+    <rect x="248" y="295" width="202" height="30" rx="15" fill="#ffffff"/>
+  </g>
+</svg>

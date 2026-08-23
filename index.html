@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Evolt — encrypted chat</title>
+<meta name="theme-color" content="#020504" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icons/icon.svg" />
+<link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="css/style.css" />
+<style>
+.brand-status {
+  margin-left: 2px;
+  font: 8px var(--font-mono);
+  letter-spacing: .16em;
+  color: var(--phosphor);
+  padding: 3px 5px;
+  border: 1px solid rgba(57,255,136,.4);
+  box-shadow: 0 0 9px rgba(57,255,136,.12);
+}
+.live-pip {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--phosphor);
+  box-shadow: 0 0 10px var(--phosphor);
+  flex: 0 0 auto;
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Auth screen ===== -->
+<section id="auth-screen" class="screen">
+  <div class="auth-card">
+    <div class="brand">
+      <img class="brand-mark" src="icons/mark.svg" alt="" width="44" height="44" />
+      <h1>Evolt</h1><span class="brand-status">ONLINE</span>
+    </div>
+    <p class="tagline">Messages read as cipher until the room's key is entered. Keys rotate — passphrases travel outside this app.</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Sign in</button>
+      <button class="tab" data-tab="register">Create account</button>
+    </div>
+
+    <form id="login-form" class="auth-form">
+      <label>Username <input name="username" autocomplete="username" required /></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+      <p class="form-error" id="login-error"></p>
+      <button type="submit" class="btn-primary">Sign in</button>
+    </form>
+
+    <form id="register-form" class="auth-form hidden">
+      <label>Username <input name="username" autocomplete="username" required minlength="3" /></label>
+      <label>Password <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
+      <p class="hint">8+ characters. The first account created on a fresh deployment becomes the admin.</p>
+      <p class="form-error" id="register-error"></p>
+      <button type="submit" class="btn-primary">Create account</button>
+    </form>
+
+    <!-- The installed builds (APK / statically-hosted PWA) ship the client
+         only - there is no backend behind them until you point at one, or
+         choose to go without. -->
+    <div class="auth-alt">
+      <details id="server-details">
+        <summary>Server</summary>
+        <label>Backend URL
+          <input id="server-url-input" placeholder="https://evolt.example.com" autocomplete="off" />
+        </label>
+        <p class="hint">Leave blank when Evolt is served by its own server. Set it in the app build to point at wherever you deployed <code>server/</code>.</p>
+        <button type="button" class="btn-secondary full" id="server-url-save">Save server URL</button>
+      </details>
+
+      <div class="auth-divider"><span>or</span></div>
+
+      <label>Display name <input id="local-only-name" placeholder="Your name on this device" autocomplete="off" /></label>
+      <button type="button" class="btn-secondary full" id="local-only-btn">Use without an account</button>
+      <p class="hint">
+        No server, no sign-up, nothing leaves your device. You pair directly
+        with someone on the same Wi-Fi, then send messages and files offline.
+        Accounts and rooms shared with more than one peer need a backend.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Main app ===== -->
+<section id="app-screen" class="screen hidden">
+  <aside class="rail">
+    <div class="rail-header">
+      <div class="dial small" aria-hidden="true"><span id="me-initial"></span></div>
+      <div class="me">
+        <div class="me-name" id="me-name"></div>
+        <div class="me-role" id="me-role"></div>
+      </div>
+      <button id="logout-btn" class="icon-btn" title="Sign out">⏻</button>
+    </div>
+
+    <button id="new-room-btn" class="btn-secondary full">+ New room</button>
+    <button id="join-room-btn" class="btn-secondary full" style="margin-top:6px">→ Join a room</button>
+    <button id="pair-btn" class="btn-secondary full" style="margin-top:6px">⇄ Pair on this network</button>
+
+    <nav id="room-list" class="room-list" aria-label="Rooms"></nav>
+  </aside>
+
+  <main class="chat-pane">
+    <header class="chat-header" id="chat-header">
+      <div class="chat-header-left">
+        <span class="live-pip" aria-hidden="true"></span><h2 id="room-name">Select a room</h2>
+        <div class="epoch-badge" id="epoch-badge" title="Current key epoch">EPOCH —</div>
+        <div class="epoch-badge" id="peer-status" title="Direct peer-to-peer connection status">○ waiting for a peer to connect</div>
+        <button id="copy-room-id" class="icon-btn hidden" title="Copy this room's ID, to invite someone">⧉</button>
+      </div>
+      <div class="chat-header-right">
+        <div class="rotation-dial" id="rotation-dial" title="Time until this derivation window rotates">
+          <svg viewBox="0 0 36 36" class="dial-ring">
+            <circle class="dial-track" cx="18" cy="18" r="15.5"></circle>
+            <circle class="dial-progress" id="dial-progress" cx="18" cy="18" r="15.5"></circle>
+          </svg>
+          <span id="dial-window">—</span>
+        </div>
+        <button id="admin-panel-btn" class="icon-btn hidden" title="Room admin settings">⚙</button>
+      </div>
+    </header>
+
+    <div id="passphrase-bar" class="passphrase-bar hidden">
+      <span>🔒 Enter this room's passphrase to read messages (shared with you outside Evolt):</span>
+      <input id="passphrase-input" type="password" placeholder="Room passphrase" autocomplete="off" />
+      <button id="passphrase-unlock" class="btn-secondary">Unlock</button>
+    </div>
+
+    <!-- Shown when a directly-paired room has no live channel. A WebRTC
+         connection cannot resume itself without some rendezvous, so
+         reconnecting means one fresh code exchange - but the room, its
+         history and (optionally) its passphrase all survive, so this is a
+         single scan rather than setting the room up again. -->
+    <div id="reconnect-bar" class="reconnect-bar hidden">
+      <span id="reconnect-text">This paired room isn’t connected right now.</span>
+      <button id="reconnect-btn" class="btn-secondary">Reconnect</button>
+    </div>
+
+    <div id="messages" class="messages" aria-live="polite"></div>
+
+    <div id="typing-indicator" class="typing-indicator hidden"></div>
+
+    <form id="composer" class="composer hidden">
+      <button type="button" id="attach-btn" class="icon-btn" title="Attach file">📎</button>
+      <input type="file" id="file-input" class="hidden" />
+      <input id="message-input" type="text" placeholder="Type a message…" autocomplete="off" />
+      <button type="submit" class="btn-primary">Transmit</button>
+    </form>
+  </main>
+</section>
+
+<!-- ===== Passphrase modal (replaces native prompt()/confirm() for better,
+     consistent, mobile-friendly UX and to avoid blocking the main thread) ===== -->
+<div id="passphrase-modal" class="modal modal-prompt hidden">
+  <div class="modal-card">
+    <h3 id="passphrase-modal-title">Room passphrase</h3>
+    <p id="passphrase-modal-hint" class="modal-hint"></p>
+    <label>Passphrase
+      <input type="password" id="passphrase-modal-input" autocomplete="off" />
+    </label>
+    <p id="passphrase-modal-error" class="modal-error"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="passphrase-modal-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="passphrase-modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Confirm action modal (replaces native confirm()) ===== -->
+<div id="confirm-modal" class="modal modal-prompt hidden">
+  <div class="modal-card">
+    <h3 id="confirm-modal-title">Are you sure?</h3>
+    <p id="confirm-modal-body"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="confirm-modal-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="confirm-modal-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Join an existing server-backed room by id ===== -->
+<div id="join-modal" class="modal hidden">
+  <div class="modal-card">
+    <h3>Join a room</h3>
+    <p class="modal-hint">
+      Paste the room ID someone gave you. Joining only gets you the
+      encrypted traffic — you still need the room's passphrase, shared with
+      you outside Evolt, before anything is readable.
+    </p>
+    <label>Room ID <input id="join-room-input" placeholder="e.g. 3f2b1c8a-…" autocomplete="off" /></label>
+    <p id="join-error" class="modal-error"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="join-modal-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="join-modal-go">Join</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Direct pairing modal (same Wi-Fi / offline, no server) ===== -->
+<div id="pair-modal" class="modal hidden">
+  <div class="modal-card pair-card">
+    <h3>Pair directly on this network</h3>
+    <p class="modal-hint">
+      Connects two devices straight to each other over your Wi-Fi. No server,
+      no internet — you carry two short codes across by hand (read them out,
+      or paste them into any other chat).
+    </p>
+
+    <div class="tabs">
+      <button class="tab active" data-pair-tab="start">Start a pairing</button>
+      <button class="tab" data-pair-tab="join">I have an invite code</button>
+    </div>
+
+    <!-- Side A -->
+    <div id="pair-start" class="pair-pane">
+      <label>Room name <input id="pair-room-name" value="Direct room" /></label>
+      <label class="checkbox-row">
+        <input type="checkbox" id="pair-use-stun" />
+        Also try over the internet (contacts a public STUN server)
+      </label>
+      <p class="modal-hint">Leave that off to stay entirely on your local network.</p>
+      <button type="button" class="btn-primary" id="pair-create">Generate invite code</button>
+
+      <div id="pair-step2" class="hidden">
+        <label>1. Show this to the other device — scan it, or send them the code
+          <canvas id="pair-offer-qr" class="pair-qr"></canvas>
+          <textarea id="pair-offer-out" class="pair-code" readonly rows="3"></textarea>
+        </label>
+        <button type="button" class="btn-secondary" id="pair-copy-offer">Copy invite code</button>
+        <label>2. Scan their reply QR, or paste the code
+          <textarea id="pair-answer-in" class="pair-code" rows="3" placeholder="Reply code…"></textarea>
+        </label>
+        <button type="button" class="btn-secondary hidden" id="pair-scan-answer">📷 Scan reply QR</button>
+        <button type="button" class="btn-primary" id="pair-complete">Connect</button>
+      </div>
+    </div>
+
+    <!-- Side B -->
+    <div id="pair-join" class="pair-pane hidden">
+      <label>1. Scan their invite QR, or paste the code
+        <textarea id="pair-offer-in" class="pair-code" rows="3" placeholder="Invite code…"></textarea>
+      </label>
+      <button type="button" class="btn-secondary hidden" id="pair-scan-offer">📷 Scan invite QR</button>
+      <button type="button" class="btn-primary" id="pair-accept">Generate reply code</button>
+
+      <div id="pair-join-step2" class="hidden">
+        <label>2. Show this back to them
+          <canvas id="pair-answer-qr" class="pair-qr"></canvas>
+          <textarea id="pair-answer-out" class="pair-code" readonly rows="3"></textarea>
+        </label>
+        <button type="button" class="btn-secondary" id="pair-copy-answer">Copy reply code</button>
+        <p class="modal-hint">The room opens as soon as they paste it in.</p>
+      </div>
+    </div>
+
+    <div id="pair-scanner" class="hidden">
+      <video id="pair-video" class="pair-video" playsinline muted></video>
+      <button type="button" class="btn-secondary full" id="pair-scan-cancel">Stop scanning</button>
+    </div>
+
+    <label class="checkbox-row">
+      <input type="checkbox" id="pair-remember-pass" />
+      Remember this room's passphrase on this device
+    </label>
+    <p class="modal-hint">
+      Off by default. Messages rest here encrypted, and the passphrase is the
+      only thing keeping them that way — storing it means anyone who gets
+      into this device can read them. Turn it on if reconnecting to the same
+      person often matters more than that.
+    </p>
+
+    <p id="pair-status" class="modal-hint"></p>
+    <p id="pair-error" class="modal-error"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="pair-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== New room modal ===== -->
+<div id="room-modal" class="modal hidden">
+  <div class="modal-card">
+    <h3>New room</h3>
+    <label>Room name <input id="room-name-input" required /></label>
+    <label>Key rotation interval
+      <select id="rotation-select">
+        <option value="60">Every 1 minute</option>
+        <option value="300" selected>Every 5 minutes</option>
+        <option value="900">Every 15 minutes</option>
+        <option value="3600">Every 1 hour</option>
+      </select>
+    </label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="disappearing-checkbox" checked />
+      Messages disappear after being viewed
+      <span class="hint" style="margin:0">(the first recipient to read one burns it for everyone connected)</span>
+    </label>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="room-modal-cancel">Abort</button>
+      <button type="button" class="btn-primary" id="room-modal-create">Initialize</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Admin panel modal ===== -->
+
+<div id="admin-modal" class="modal hidden">
+  <div class="modal-card">
+    <h3>Room admin</h3>
+
+    <div class="admin-row">
+      <div>
+        <div class="admin-row-title">Disappearing messages</div>
+        <div class="admin-row-sub">Messages are deleted from the server as soon as a recipient views them.</div>
+      </div>
+      <button id="toggle-disappearing" class="toggle" role="switch" aria-checked="false"><span class="toggle-knob"></span></button>
+    </div>
+
+    <div class="admin-row">
+      <div>
+        <div class="admin-row-title">Rotation window</div>
+        <div class="admin-row-sub">How often the derived key automatically changes within the current passphrase.</div>
+      </div>
+      <select id="admin-rotation-select">
+        <option value="60">1 min</option>
+        <option value="300">5 min</option>
+        <option value="900">15 min</option>
+        <option value="3600">1 hour</option>
+      </select>
+    </div>
+
+    <div class="admin-row column">
+      <div>
+        <div class="admin-row-title">Rotate key now</div>
+        <div class="admin-row-sub">Forces a brand new passphrase. Everyone must be given the new one outside Evolt — old messages become unreadable until then.</div>
+      </div>
+      <button id="rotate-key-btn" class="btn-danger">Rotate key &amp; start new epoch</button>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="admin-modal-close">Done</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/vendor/pako.umd.min.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/crypto.js"></script>
+<script src="js/webrtc.js"></script>
+<script src="js/pairing.js"></script>
+<script src="js/store.js"></script>
+<script src="js/filetransfer.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

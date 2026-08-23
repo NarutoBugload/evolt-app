@@ -1,0 +1,551 @@
+/* ===== FUTURE // NEON SYSTEM ===== */
+:root {
+  --ink: #020504;
+  --panel: #07100c;
+  --panel-2: #0b1711;
+  --panel-3: #0e1f16;
+  --line: #173c28;
+  --line-bright: #236b42;
+  --phosphor: #39ff88;
+  --phosphor-soft: #8affb8;
+  --cipher: #4d8065;
+  --danger: #ff5577;
+  --paper: #eafff2;
+  --paper-dim: #8fb3a0;
+  --black: #000000;
+
+  --font-display: 'Space Grotesk', 'Segoe UI', Roboto, system-ui, sans-serif;
+  --font-body: 'Inter', -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 80% 10%, rgba(57,255,136,.08), transparent 28rem),
+    radial-gradient(circle at 10% 90%, rgba(57,255,136,.04), transparent 24rem),
+    var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .16;
+  background-image:
+    linear-gradient(rgba(57,255,136,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57,255,136,.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 92%);
+}
+button, input, select { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 3px; box-shadow: 0 0 18px rgba(57,255,136,.22); }
+.hidden { display: none !important; }
+
+/* ===== Screens ===== */
+.screen { min-height: 100vh; }
+
+/* ===== Auth ===== */
+#auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #1a2029 0%, var(--ink) 60%);
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 32px 28px;
+}
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+/* Referenced via <img>, so the mark can't inherit `color` from this
+   document - it carries its own dark default for the channel cut-outs,
+   which matches --ink. Keep them in step if either changes. */
+.brand-mark { display: block; flex: 0 0 auto; }
+.brand h1 { font-family: var(--font-display); font-size: 26px; margin: 0; letter-spacing: 0.02em; }
+.dial {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--panel-2);
+  border: 1.5px solid var(--phosphor);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); color: var(--phosphor); font-size: 12px;
+}
+.dial.small { width: 32px; height: 32px; font-size: 11px; }
+.tagline { color: var(--paper-dim); font-size: 13.5px; line-height: 1.5; margin: 10px 0 22px; }
+
+.tabs { display: flex; gap: 4px; background: var(--panel-2); padding: 4px; border-radius: 10px; margin-bottom: 20px; }
+.tab {
+  flex: 1; padding: 8px 0; border: none; background: transparent; color: var(--paper-dim);
+  border-radius: 7px; cursor: pointer; font-size: 13.5px; font-weight: 500;
+}
+.tab.active { background: var(--panel); color: var(--paper); }
+
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-form label { font-size: 12.5px; color: var(--paper-dim); display: flex; flex-direction: column; gap: 6px; }
+.auth-form input {
+  background: var(--ink); border: 1px solid var(--line); color: var(--paper);
+  border-radius: 8px; padding: 10px 12px; font-size: 14px;
+}
+.hint { font-size: 12px; color: var(--paper-dim); margin: -6px 0 0; }
+.form-error { color: var(--danger); font-size: 12.5px; min-height: 16px; margin: 0; }
+
+.btn-primary, .btn-secondary, .btn-danger {
+  border: none; border-radius: 8px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+}
+.btn-primary { background: var(--phosphor); color: #211705; }
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-secondary { background: var(--panel-2); color: var(--paper); border: 1px solid var(--line); }
+.btn-secondary:hover { border-color: var(--cipher); }
+.btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+.btn-danger:hover { background: rgba(196, 87, 59, 0.1); }
+.full { width: 100%; }
+
+/* ===== App layout ===== */
+#app-screen { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+.rail {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  padding: 16px 14px;
+}
+.rail-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.me { flex: 1; min-width: 0; }
+.me-name { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.me-role { font-size: 11px; color: var(--phosphor); text-transform: uppercase; letter-spacing: 0.04em; }
+.icon-btn {
+  background: transparent; border: 1px solid var(--line); color: var(--paper-dim);
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 14px;
+}
+.icon-btn:hover { color: var(--paper); border-color: var(--cipher); }
+
+.room-list { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; overflow-y: auto; }
+.room-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;
+  color: var(--paper-dim); font-size: 13.5px;
+}
+.room-item:hover { background: var(--panel-2); }
+.room-item.active { background: var(--panel-2); border-color: var(--line); color: var(--paper); }
+.room-item .rid { font-family: var(--font-mono); font-size: 11px; color: var(--cipher); }
+
+.chat-pane { display: flex; flex-direction: column; min-width: 0; }
+.chat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--line);
+}
+.chat-header-left { display: flex; align-items: center; gap: 12px; }
+.chat-header h2 { font-family: var(--font-display); font-size: 17px; margin: 0; }
+.epoch-badge {
+  font-family: var(--font-mono); font-size: 11px; color: var(--phosphor);
+  border: 1px solid var(--phosphor); border-radius: 999px; padding: 3px 9px; letter-spacing: 0.03em;
+}
+.chat-header-right { display: flex; align-items: center; gap: 14px; }
+
+/* Signature element: rotation dial */
+.rotation-dial { position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
+.dial-ring { width: 34px; height: 34px; transform: rotate(-90deg); }
+.dial-track { fill: none; stroke: var(--line); stroke-width: 2.4; }
+.dial-progress { fill: none; stroke: var(--phosphor); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 97.4; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+#dial-window { position: absolute; font-family: var(--font-mono); font-size: 9px; color: var(--paper-dim); }
+
+.passphrase-bar {
+  display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+  background: rgba(232, 196, 104, 0.07); border-bottom: 1px solid var(--line);
+  font-size: 13px; color: var(--paper-dim);
+}
+.passphrase-bar input {
+  background: var(--ink); border: 1px solid var(--line); color: var(--paper);
+  border-radius: 7px; padding: 7px 10px; font-size: 13px; flex: 0 0 220px;
+}
+
+/* Same shape as the passphrase bar - both are "this room needs something
+   from you before it works" states. Amber rather than green: it is a
+   prompt, not a healthy status. */
+.reconnect-bar {
+  display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+  background: rgba(232, 196, 104, 0.07); border-bottom: 1px solid var(--line);
+  font-size: 13px; color: var(--paper-dim);
+}
+.reconnect-bar span { flex: 1; }
+
+.messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 62%; padding: 10px 13px; border-radius: 12px; font-size: 14px; line-height: 1.45; position: relative; }
+.msg.mine { align-self: flex-end; background: var(--phosphor); color: #211705; border-bottom-right-radius: 4px; }
+.msg.theirs { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg .meta { font-size: 10.5px; opacity: 0.65; margin-top: 4px; }
+.msg.locked { font-family: var(--font-mono); color: var(--cipher); background: var(--panel-2); border: 1px dashed var(--line); letter-spacing: 0.03em; }
+.msg.locked .lock-icon { margin-right: 6px; }
+.msg .file-chip { display: flex; align-items: center; gap: 8px; }
+.msg .file-chip button { background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 4px 8px; font-size: 11.5px; cursor: pointer; color: inherit; }
+.msg.burn-flag::after {
+  content: "burns after viewing"; font-size: 9.5px; opacity: 0.6; display: block; margin-top: 3px; font-style: italic;
+}
+
+.typing-indicator { padding: 0 20px 6px; font-size: 12px; color: var(--paper-dim); font-style: italic; }
+
+.composer { display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); }
+.composer input[type="text"] {
+  flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--paper);
+  border-radius: 10px; padding: 11px 14px; font-size: 14px;
+}
+
+/* ===== Modals ===== */
+.modal { position: fixed; inset: 0; background: rgba(10, 12, 15, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.modal-card { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.modal-card h3 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+.modal-card label { font-size: 12.5px; color: var(--paper-dim); display: flex; flex-direction: column; gap: 6px; }
+.modal-card input, .modal-card select {
+  background: var(--ink); border: 1px solid var(--line); color: var(--paper); border-radius: 8px; padding: 9px 11px; font-size: 14px;
+}
+.checkbox-row { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.modal-hint { font-size: 12.5px; color: var(--paper-dim); margin: -8px 0 0; line-height: 1.4; }
+.modal-error { font-size: 12.5px; color: #ff6b6b; margin: -4px 0 0; min-height: 1em; }
+/* The passphrase and confirm prompts can open ON TOP of another modal (e.g.
+   "Rotate key" is a button inside the admin panel). They sit earlier in the
+   DOM than #admin-modal, so at an equal z-index the admin panel's backdrop
+   paints over them and swallows the clicks. Lift them above every other
+   modal. */
+.modal.modal-prompt { z-index: 60; }
+
+/* Direct-pairing modal: the two handshake codes are a few hundred
+   characters each, so they need room to breathe and a monospace face that
+   makes a mistyped character obvious. */
+/* Auth screen: backend URL + the no-account entry point. */
+.auth-alt { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+.auth-alt label { font-size: 12.5px; color: var(--paper-dim); display: flex; flex-direction: column; gap: 6px; }
+.auth-alt input {
+  background: var(--ink); border: 1px solid var(--line); color: var(--paper);
+  border-radius: 8px; padding: 10px 12px; font-size: 14px;
+}
+.auth-alt code { font: 11.5px var(--font-mono); color: var(--phosphor); }
+#server-details { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+#server-details summary { cursor: pointer; font-size: 12.5px; color: var(--paper-dim); }
+#server-details[open] summary { margin-bottom: 10px; color: var(--paper); }
+#server-details > *:not(summary) { margin-top: 10px; }
+.auth-divider { display: flex; align-items: center; gap: 10px; color: var(--cipher); font-size: 11px; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* Delivery ticks. Deliberately quiet - they matter when you go looking,
+   not while reading. The delivered state is the only one that brightens. */
+.tick { font-size: 10.5px; opacity: .75; letter-spacing: -1px; }
+.tick.tick-done { opacity: 1; color: var(--phosphor); }
+.msg.mine .tick.tick-done { color: #14611f; }
+
+.file-status { font: 10.5px var(--font-mono); color: var(--cipher); margin-left: 6px; }
+.msg.mine .file-status { color: #3d3213; }
+
+.pair-card { max-width: 520px; max-height: 88vh; overflow-y: auto; }
+/* The base .tab active state is nearly invisible against the modal card;
+   in here it's load-bearing, since the two tabs are opposite halves of the
+   handshake and picking the wrong one is a dead end. */
+.pair-card .tab.active { background: var(--panel-3); color: var(--phosphor); box-shadow: inset 0 0 0 1px var(--line-bright); }
+.pair-pane { display: flex; flex-direction: column; gap: 12px; }
+.pair-code {
+  width: 100%; resize: vertical;
+  background: #010302; border: 1px solid var(--line); color: var(--phosphor);
+  border-radius: 6px; padding: 9px 11px;
+  font: 11px/1.45 var(--font-mono); word-break: break-all;
+}
+.pair-code:focus { border-color: var(--phosphor); outline: none; }
+/* A QR must be dark-on-light to scan, so it keeps its own white field
+   rather than inheriting the dark theme around it. */
+.pair-qr { display: block; margin: 0 auto 8px; max-width: 100%; height: auto; background: #fff;
+  border: 6px solid #fff; border-radius: 4px; image-rendering: pixelated; }
+.pair-video { width: 100%; max-height: 260px; background: #000; border-radius: 6px;
+  border: 1px solid var(--line); margin-bottom: 8px; object-fit: cover; }
+
+.admin-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 4px 0; }
+.admin-row.column { flex-direction: column; align-items: stretch; gap: 10px; }
+.admin-row-title { font-size: 13.5px; font-weight: 600; }
+.admin-row-sub { font-size: 11.5px; color: var(--paper-dim); margin-top: 2px; line-height: 1.4; }
+
+.toggle { width: 42px; height: 24px; border-radius: 999px; background: var(--line); border: none; position: relative; cursor: pointer; flex-shrink: 0; }
+.toggle[aria-checked="true"] { background: var(--phosphor); }
+.toggle-knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); transition: left 0.15s ease; }
+.toggle[aria-checked="true"] .toggle-knob { left: 21px; background: #211705; }
+
+/* ===== Responsive ===== */
+@media (max-width: 720px) {
+  #app-screen { grid-template-columns: 1fr; }
+  .rail { position: fixed; inset: 0 30% 0 0; z-index: 20; transform: translateX(-105%); transition: transform 0.2s ease; }
+  .rail.open { transform: translateX(0); }
+  .msg { max-width: 82%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dial-progress, .rail { transition: none !important; }
+}
+
+
+/* ===== FUTURE // AUTH OVERRIDES ===== */
+#auth-screen {
+  position: relative;
+  background:
+    radial-gradient(800px 500px at 50% 40%, rgba(57,255,136,.07), transparent 65%),
+    linear-gradient(180deg, #020604 0%, #000 100%);
+}
+#auth-screen::after {
+  content: "EVOLT // PRIVATE MESH";
+  position: absolute;
+  left: 24px; bottom: 20px;
+  font: 10px var(--font-mono);
+  letter-spacing: .22em;
+  color: #28553c;
+}
+.auth-card {
+  position: relative;
+  max-width: 410px;
+  background: rgba(4,12,8,.9);
+  border: 1px solid var(--line-bright);
+  border-radius: 4px;
+  padding: 34px 30px 30px;
+  box-shadow:
+    0 0 0 1px rgba(57,255,136,.04),
+    0 0 55px rgba(57,255,136,.07),
+    inset 0 0 40px rgba(57,255,136,.025);
+  backdrop-filter: blur(14px);
+}
+.auth-card::before {
+  content: "";
+  position: absolute;
+  width: 7px; height: 7px;
+  left: -4px; top: -4px;
+  background: var(--phosphor);
+  box-shadow: 0 0 12px var(--phosphor);
+}
+.brand h1 {
+  font-size: 28px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.brand::after {
+  content: "E2E2 // LOCAL FIRST";
+  margin-left: auto;
+  align-self: flex-end;
+  font: 9px var(--font-mono);
+  color: var(--cipher);
+  letter-spacing: .08em;
+}
+.dial {
+  background: #010302;
+  border-color: var(--phosphor);
+  box-shadow: 0 0 18px rgba(57,255,136,.25), inset 0 0 12px rgba(57,255,136,.08);
+}
+.tagline {
+  color: var(--paper-dim);
+  font-size: 12.5px;
+  letter-spacing: .01em;
+}
+.tabs {
+  background: #020705;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.tab { border-radius: 2px; }
+.tab.active {
+  background: var(--phosphor);
+  color: #001308;
+  box-shadow: 0 0 16px rgba(57,255,136,.15);
+}
+.auth-form input,
+.modal-card input, .modal-card select,
+.passphrase-bar input,
+.composer input[type="text"] {
+  background: #010302;
+  border-color: var(--line);
+  border-radius: 3px;
+}
+.auth-form input:focus,
+.modal-card input:focus, .modal-card select:focus,
+.passphrase-bar input:focus,
+.composer input[type="text"]:focus {
+  border-color: var(--phosphor);
+  box-shadow: 0 0 0 1px rgba(57,255,136,.18), 0 0 18px rgba(57,255,136,.08);
+  outline: none;
+}
+.btn-primary, .btn-secondary, .btn-danger {
+  border-radius: 3px;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  font-size: 11.5px;
+}
+.btn-primary {
+  background: var(--phosphor);
+  color: #001308;
+  box-shadow: 0 0 20px rgba(57,255,136,.13);
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 28px rgba(57,255,136,.24);
+}
+.btn-secondary {
+  background: #07130c;
+  color: var(--phosphor-soft);
+  border-color: var(--line-bright);
+}
+.btn-secondary:hover { border-color: var(--phosphor); color: var(--phosphor); background: #0a1c11; }
+.btn-danger { color: var(--danger); border-color: rgba(255,85,119,.6); }
+.btn-danger:hover { background: rgba(255,85,119,.08); }
+
+/* ===== FUTURE // APP SHELL ===== */
+#app-screen {
+  grid-template-columns: 250px 1fr;
+  background: transparent;
+}
+.rail {
+  position: relative;
+  background: rgba(3,10,7,.94);
+  border-right: 1px solid var(--line);
+  padding: 14px 12px;
+  box-shadow: 8px 0 35px rgba(0,0,0,.25);
+}
+.rail::before {
+  content: "SECURE MESH";
+  display: block;
+  font: 9px var(--font-mono);
+  letter-spacing: .22em;
+  color: var(--cipher);
+  margin: 0 8px 14px;
+}
+.rail-header {
+  padding: 9px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  background: rgba(8,20,13,.8);
+}
+.me-role { color: var(--phosphor); letter-spacing: .14em; }
+.icon-btn {
+  background: #030806;
+  border-color: var(--line);
+  border-radius: 3px;
+}
+.icon-btn:hover { color: var(--phosphor); border-color: var(--phosphor); box-shadow: 0 0 12px rgba(57,255,136,.12); }
+.room-list { gap: 3px; margin-top: 12px; }
+.room-item {
+  border-radius: 2px;
+  padding: 11px 10px;
+  border-left: 2px solid transparent;
+}
+.room-item:hover { background: rgba(57,255,136,.04); color: var(--phosphor-soft); }
+.room-item.active {
+  background: linear-gradient(90deg, rgba(57,255,136,.09), transparent);
+  border-color: transparent;
+  border-left-color: var(--phosphor);
+  color: var(--phosphor);
+  box-shadow: inset 8px 0 24px rgba(57,255,136,.025);
+}
+.room-item .rid { color: var(--cipher); }
+
+.chat-pane {
+  background:
+    radial-gradient(700px 400px at 70% 15%, rgba(57,255,136,.035), transparent 70%);
+}
+.chat-header {
+  min-height: 64px;
+  padding: 12px 22px;
+  background: rgba(2,7,5,.72);
+  border-bottom-color: var(--line);
+  backdrop-filter: blur(10px);
+}
+.chat-header h2 {
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-size: 15px;
+}
+.epoch-badge {
+  color: var(--phosphor);
+  border-color: rgba(57,255,136,.55);
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(57,255,136,.07);
+}
+.dial-track { stroke: #173c28; }
+.dial-progress { stroke: var(--phosphor); filter: drop-shadow(0 0 3px rgba(57,255,136,.8)); }
+#dial-window { color: var(--phosphor-soft); }
+.passphrase-bar {
+  background: rgba(57,255,136,.035);
+  border-bottom-color: var(--line);
+  color: var(--paper-dim);
+}
+.messages {
+  padding: 24px clamp(16px, 4vw, 48px);
+  scrollbar-color: #1d5938 #020604;
+}
+.msg {
+  max-width: min(680px, 72%);
+  border-radius: 4px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.18);
+}
+.msg.mine {
+  background: var(--phosphor);
+  color: #001308;
+  box-shadow: 0 0 22px rgba(57,255,136,.08);
+}
+.msg.theirs {
+  background: rgba(8,21,14,.92);
+  border-color: var(--line);
+}
+.msg.locked {
+  background: rgba(5,13,9,.9);
+  border-color: #1b5635;
+  color: var(--cipher);
+}
+.msg.burn-flag::after { color: var(--phosphor); }
+.typing-indicator { color: var(--cipher); }
+.composer {
+  padding: 12px 22px 16px;
+  border-top-color: var(--line);
+  background: rgba(2,7,5,.78);
+}
+.composer input[type="text"] {
+  min-height: 42px;
+  background: #030806;
+  border-radius: 3px;
+}
+.composer input[type="text"]::placeholder { color: #557866; }
+
+/* ===== FUTURE // MODALS ===== */
+.modal {
+  background: rgba(0,3,2,.78);
+  backdrop-filter: blur(9px);
+}
+.modal-card {
+  max-width: 460px;
+  background: #050d09;
+  border-color: var(--line-bright);
+  border-radius: 3px;
+  box-shadow: 0 0 60px rgba(57,255,136,.07);
+}
+.modal-card h3 {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.toggle[aria-checked="true"] {
+  background: var(--phosphor);
+  box-shadow: 0 0 14px rgba(57,255,136,.25);
+}
+
+/* Thin terminal-like scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #1a4f31 transparent; }
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #17482d; border-radius: 0; }
+*::-webkit-scrollbar-thumb:hover { background: #286d43; }
+
+@media (max-width: 720px) {
+  #app-screen { grid-template-columns: 1fr; }
+  .rail { background: #030a07; }
+  .msg { max-width: 88%; }
+  .brand::after { display: none; }
+}

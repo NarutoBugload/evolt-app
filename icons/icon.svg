@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Escarp">
+  <!--
+    Launcher / tab / install icon: the Escarp mark on its own dark plate.
+    The plate is not decoration - the mark's disc is white, so without it the
+    icon vanishes on a light browser tab or a light Android launcher.
+    For the mark on the app's own dark chrome, use mark.svg instead.
+
+    Inset to ~78% of the canvas so the disc survives the circular and
+    squircle masks Android and iOS apply to home-screen icons.
+  -->
+  <rect width="512" height="512" rx="112" fill="#020504"/>
+  <g transform="translate(256 256) scale(0.78) translate(-256 -256)" color="#020504">
+    <circle cx="256" cy="256" r="180" fill="#ffffff"/>
+    <g fill="currentColor">
+      <rect x="236" y="175" width="226" height="54" rx="27"/>
+      <rect x="60"  y="229" width="402" height="54" rx="27"/>
+      <rect x="236" y="283" width="226" height="54" rx="27"/>
+    </g>
+    <rect x="248" y="187" width="202" height="30" rx="15" fill="#ffffff"/>
+    <rect x="72"  y="241" width="378" height="30" rx="15" fill="#5BD24A"/>
+    <rect x="248" y="295" width="202" height="30" rx="15" fill="#ffffff"/>
+  </g>
+</svg>
