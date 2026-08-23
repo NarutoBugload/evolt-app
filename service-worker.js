@@ -4,13 +4,14 @@
 // route under /api or /socket.io - those must always hit the network so
 // stale ciphertext or ephemeral content is never served from a cache.
 
-const CACHE = 'evolt-shell-v5';
+const CACHE = 'evolt-shell-v6';
 const SHELL_FILES = [
   './',
   'index.html',
   'css/style.css',
   'fonts/fonts.css',
   'js/app.js',
+  'js/config.js',
   'js/crypto.js',
   'js/pairing.js',
   'js/store.js',

@@ -57,10 +57,20 @@ button, input, select { font-family: inherit; }
   align-items: center;
   justify-content: center;
   padding: 24px;
+  /* body sets overflow:hidden for the chat layout, which left this screen
+     unscrollable - on a short phone (or with the keyboard up) the bottom of
+     the card, including the "use without an account" escape hatch, was
+     simply unreachable. Scroll here, and stop centring once it overflows. */
+  overflow-y: auto;
   background:
     radial-gradient(1200px 600px at 50% -10%, #1a2029 0%, var(--ink) 60%);
 }
+/* Flex so the two sign-in paths can be reordered: whichever one can
+   actually work on this build goes first. See applyAuthMode(). */
 .auth-card {
+  display: flex;
+  flex-direction: column;
+  margin: auto;              /* keeps it centred until it overflows */
   width: 100%;
   max-width: 380px;
   background: var(--panel);
@@ -128,6 +138,10 @@ button, input, select { font-family: inherit; }
   width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 14px;
 }
 .icon-btn:hover { color: var(--paper); border-color: var(--cipher); }
+/* Only meaningful once the rail becomes an overlay - see the small-screen
+   block below. On a wide screen the rail is always visible. */
+.rail-toggle { display: none; }
+.rail-backdrop { display: none; }
 
 .room-list { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; overflow-y: auto; }
 .room-item {
@@ -224,6 +238,13 @@ button, input, select { font-family: inherit; }
    makes a mistyped character obvious. */
 /* Auth screen: backend URL + the no-account entry point. */
 .auth-alt { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+/* No backend reachable: the account forms cannot work, so the no-account
+   path moves above them rather than sitting below the fold. */
+.auth-card.no-backend .tabs,
+.auth-card.no-backend #login-form,
+.auth-card.no-backend #register-form { order: 3; opacity: .55; }
+.auth-card.no-backend .auth-alt { order: 2; margin-top: 8px; }
+.auth-card.no-backend .auth-divider { display: none; }
 .auth-alt label { font-size: 12.5px; color: var(--paper-dim); display: flex; flex-direction: column; gap: 6px; }
 .auth-alt input {
   background: var(--ink); border: 1px solid var(--line); color: var(--paper);
@@ -279,8 +300,6 @@ button, input, select { font-family: inherit; }
 /* ===== Responsive ===== */
 @media (max-width: 720px) {
   #app-screen { grid-template-columns: 1fr; }
-  .rail { position: fixed; inset: 0 30% 0 0; z-index: 20; transform: translateX(-105%); transition: transform 0.2s ease; }
-  .rail.open { transform: translateX(0); }
   .msg { max-width: 82%; }
 }
 
@@ -548,4 +567,41 @@ button, input, select { font-family: inherit; }
   .rail { background: #030a07; }
   .msg { max-width: 88%; }
   .brand::after { display: none; }
+}
+
+
+/* ===== Small screens =====
+   Must live at the END of this file. The theme section above re-declares
+   .rail (including `position: relative`), so a media query placed earlier
+   loses to it on source order despite matching - which is exactly what
+   silently broke the drawer: the transform applied, the position did not,
+   and the rail sat in flow above the chat instead of overlaying it. */
+@media (max-width: 720px) {
+  /* The rail becomes a drawer. It already slid off-screen here, but nothing
+     ever added .open, so New room / Join / Pair were unreachable on a phone
+     and the installed build was a dead end. #rail-toggle opens it. */
+  .rail {
+    position: fixed;
+    /* Leave a wider strip of the chat visible: that strip is the only
+       part of the backdrop you can actually tap to dismiss the drawer. */
+    inset: 0 28% 0 0;
+    z-index: 30;
+    transform: translateX(-105%);
+    transition: transform .2s ease;
+  }
+  .rail.open { transform: translateX(0); }
+  .rail-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .rail-backdrop { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(0,0,0,.55); }
+  .rail-backdrop.hidden { display: none; }
+
+  /* A phone header cannot fit the room name, epoch, peer state and buttons
+     on one line - wrap rather than overflow. */
+  .chat-header { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .chat-header-left { flex-wrap: wrap; gap: 8px; min-width: 0; }
+  .chat-header h2 { font-size: 15px; }
+  .passphrase-bar, .reconnect-bar { flex-wrap: wrap; padding: 10px 12px; }
+  .passphrase-bar input { flex: 1 1 140px; }
+  .messages { padding: 14px 12px; }
+  .composer { padding: 10px 12px; }
+  .msg { max-width: 84%; }
 }

@@ -63,6 +63,12 @@
          only - there is no backend behind them until you point at one, or
          choose to go without. -->
     <div class="auth-alt">
+      <p id="no-backend-note" class="hint hidden">
+        This build has no server of its own, so there is nothing to sign in
+        to. Use it without an account — that mode needs no server and works
+        offline. Or point it at a backend under “Server”.
+      </p>
+
       <details id="server-details">
         <summary>Server</summary>
         <label>Backend URL
@@ -87,7 +93,11 @@
 
 <!-- ===== Main app ===== -->
 <section id="app-screen" class="screen hidden">
-  <aside class="rail">
+  <!-- Tapping outside the drawer closes it. Only rendered as a hit target
+       on small screens, where the rail is an overlay. -->
+  <div id="rail-backdrop" class="rail-backdrop hidden"></div>
+
+  <aside class="rail" id="rail">
     <div class="rail-header">
       <div class="dial small" aria-hidden="true"><span id="me-initial"></span></div>
       <div class="me">
@@ -107,6 +117,7 @@
   <main class="chat-pane">
     <header class="chat-header" id="chat-header">
       <div class="chat-header-left">
+        <button id="rail-toggle" class="icon-btn rail-toggle" aria-label="Show rooms" aria-expanded="false">☰</button>
         <span class="live-pip" aria-hidden="true"></span><h2 id="room-name">Select a room</h2>
         <div class="epoch-badge" id="epoch-badge" title="Current key epoch">EPOCH —</div>
         <div class="epoch-badge" id="peer-status" title="Direct peer-to-peer connection status">○ waiting for a peer to connect</div>
@@ -347,6 +358,7 @@
   </div>
 </div>
 
+<script src="js/config.js"></script>
 <script src="js/vendor/pako.umd.min.js"></script>
 <script src="js/vendor/qrcode.js"></script>
 <script src="js/crypto.js"></script>

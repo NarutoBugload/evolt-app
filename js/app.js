@@ -18,10 +18,16 @@
 //      for LAN chat. Anything server-dependent is hidden rather than
 //      offered and then failing.
 function serverBase() {
-  return localStorage.getItem('evolt_server') || '';
+  // A URL the person set wins; otherwise the build-time default from
+  // config.js; otherwise same-origin, which is right for the web app.
+  const chosen = localStorage.getItem('evolt_server');
+  if (chosen !== null) return chosen;
+  return (typeof window !== 'undefined' && window.EVOLT_DEFAULT_SERVER) || '';
 }
 function setServerBase(url) {
   const cleaned = (url || '').trim().replace(/\/+$/, '');
+  // Removing the override falls back to the build default rather than
+  // pinning an empty string, so "clear this" means "use the default".
   if (cleaned) localStorage.setItem('evolt_server', cleaned);
   else localStorage.removeItem('evolt_server');
 }
@@ -99,18 +105,36 @@ function setPassphrase(roomId, epoch, value) {
 
 // ---------- API helper ----------
 
+const NO_SERVER_MESSAGE =
+  'No server to sign in to. This build has no backend of its own — use it ' +
+  'without an account below, or set a server URL under “Server”.';
+
 async function api(path, options = {}) {
-  if (isLocalOnly()) throw new Error('Local-only mode: no server is configured.');
-  const res = await fetch(serverBase() + path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
+  if (isLocalOnly()) throw new Error(NO_SERVER_MESSAGE);
+  let res;
+  try {
+    res = await fetch(serverBase() + path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+        ...(options.headers || {}),
+      },
+    });
+  } catch (e) {
+    // fetch only rejects when the request never reached a server at all.
+    // "Failed to fetch" tells the person nothing; this tells them what to do.
+    throw new Error(NO_SERVER_MESSAGE);
+  }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    // A backend would answer with JSON and an `error`. Anything else here
+    // means we reached something that isn't an Evolt server - a static host
+    // serving a 404, a captive portal, a proxy - which is the same dead end
+    // as no server at all, so say the same thing.
+    if (!data.error) throw new Error(NO_SERVER_MESSAGE);
+    throw new Error(data.error);
+  }
   return data;
 }
 
@@ -170,6 +194,36 @@ function onAuthed({ token, user }) {
 }
 
 // ---------- Backend URL + local-only entry ----------
+//
+// An installed build (APK, or the PWA on static hosting) has no backend
+// behind it until someone points it at one. Leading with a sign-in form
+// there is a dead end: the person types credentials, gets a network error,
+// and has no way of knowing the answer is "this build has no server, use it
+// without an account". So find out first, and lead with whichever path can
+// actually work.
+async function detectBackend() {
+  if (isLocalOnly()) return false;
+  try {
+    const res = await fetch(`${serverBase()}/api/health`, { method: 'GET' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function applyAuthMode() {
+  const card = document.querySelector('.auth-card');
+  const hasBackend = await detectBackend();
+  card.classList.toggle('no-backend', !hasBackend);
+
+  // With no server, using it without an account is the only thing that
+  // works, so it becomes the primary action rather than a footnote.
+  const localBtn = document.getElementById('local-only-btn');
+  localBtn.classList.toggle('btn-primary', !hasBackend);
+  localBtn.classList.toggle('btn-secondary', hasBackend);
+  document.getElementById('no-backend-note').classList.toggle('hidden', hasBackend);
+}
+applyAuthMode();
 
 document.getElementById('server-url-input').value = serverBase();
 document.getElementById('server-url-save').addEventListener('click', () => {
@@ -386,7 +440,7 @@ async function refreshRoomList() {
     item.className = 'room-item' + (state.activeRoom?.id === room.id ? ' active' : '');
     const tag = room.local ? 'LAN' : `#${room.id.slice(0, 4)}`;
     item.innerHTML = `<span>${escapeHtml(room.name)}</span><span class="rid">${tag}</span>`;
-    item.addEventListener('click', () => openRoom(room.id));
+    item.addEventListener('click', () => { setRailOpen(false); openRoom(room.id); });
     list.appendChild(item);
   });
 }
@@ -1167,6 +1221,26 @@ async function downloadFile(msg, passphrase) {
     await consumeMessage(msg);
   }
 }
+
+// ---------- Room drawer (small screens) ----------
+//
+// On a phone the rail is an overlay rather than a column. Without something
+// to open it, every room action - new, join, pair, switching room - is
+// unreachable, which is what made the installed build a dead end.
+
+const rail = document.getElementById('rail');
+const railBackdrop = document.getElementById('rail-backdrop');
+
+function setRailOpen(open) {
+  rail.classList.toggle('open', open);
+  railBackdrop.classList.toggle('hidden', !open);
+  document.getElementById('rail-toggle').setAttribute('aria-expanded', String(open));
+}
+
+document.getElementById('rail-toggle').addEventListener('click', () => {
+  setRailOpen(!rail.classList.contains('open'));
+});
+railBackdrop.addEventListener('click', () => setRailOpen(false));
 
 // ---------- Joining an existing server-backed room ----------
 //
