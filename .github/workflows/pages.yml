@@ -32,13 +32,15 @@ jobs:
           cp index.html 404.html
           # Stop Jekyll dropping files it doesn't recognise.
           touch .nojekyll
-      # enablement turns Pages on via the API on first run, so nobody has to
-      # visit Settings before the first deploy. This works here and did not
-      # on the private repo: creating a Pages site needs rights GITHUB_TOKEN
-      # is only granted on a public one.
+      # Pages must be switched on once, by hand:
+      #   Settings > Pages > Build and deployment > Source: GitHub Actions
+      # configure-pages has an `enablement: true` option meant to do this via
+      # the API, but it fails here with "Create Pages site failed. Error:
+      # Resource not accessible by integration" - creating a Pages site needs
+      # an administration permission the workflow token is not granted.
+      # Tested on both a private and a public repo; visibility makes no
+      # difference, so the manual toggle is the only route.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
