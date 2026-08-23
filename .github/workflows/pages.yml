@@ -32,7 +32,13 @@ jobs:
           cp index.html 404.html
           # Stop Jekyll dropping files it doesn't recognise.
           touch .nojekyll
+      # enablement turns Pages on via the API on first run, so nobody has to
+      # visit Settings before the first deploy. This works here and did not
+      # on the private repo: creating a Pages site needs rights GITHUB_TOKEN
+      # is only granted on a public one.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
