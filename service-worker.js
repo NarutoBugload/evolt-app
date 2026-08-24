@@ -4,7 +4,7 @@
 // route under /api or /socket.io - those must always hit the network so
 // stale ciphertext or ephemeral content is never served from a cache.
 
-const CACHE = 'evolt-shell-v6';
+const CACHE = 'evolt-shell-v7';
 const SHELL_FILES = [
   './',
   'index.html',
@@ -19,6 +19,7 @@ const SHELL_FILES = [
   'js/webrtc.js',
   'js/vendor/pako.umd.min.js',
   'js/vendor/qrcode.js',
+  'js/vendor/jsqr.js',
   'manifest.json',
   'icons/icon.svg',
   'icons/mark.svg',

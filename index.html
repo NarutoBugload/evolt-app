@@ -108,6 +108,7 @@
     </div>
 
     <button id="new-room-btn" class="btn-secondary full">+ New room</button>
+    <button id="find-people-btn" class="btn-secondary full" style="margin-top:6px">⌕ Find someone</button>
     <button id="join-room-btn" class="btn-secondary full" style="margin-top:6px">→ Join a room</button>
     <button id="pair-btn" class="btn-secondary full" style="margin-top:6px">⇄ Pair on this network</button>
 
@@ -120,6 +121,11 @@
         <button id="rail-toggle" class="icon-btn rail-toggle" aria-label="Show rooms" aria-expanded="false">☰</button>
         <span class="live-pip" aria-hidden="true"></span><h2 id="room-name">Select a room</h2>
         <div class="epoch-badge" id="epoch-badge" title="Current key epoch">EPOCH —</div>
+        <!-- A short, non-secret fingerprint of the derived key. Both devices
+             must show the SAME code; if they differ, someone typed a
+             different passphrase and nothing will decrypt. -->
+        <div class="epoch-badge key-fp hidden" id="key-fingerprint"
+             title="Key check. Both devices must show the same code — if they don't, one of you typed a different passphrase."></div>
         <div class="epoch-badge" id="peer-status" title="Direct peer-to-peer connection status">○ waiting for a peer to connect</div>
         <button id="copy-room-id" class="icon-btn hidden" title="Copy this room's ID, to invite someone">⧉</button>
       </div>
@@ -189,6 +195,24 @@
     <div class="modal-actions">
       <button type="button" class="btn-secondary" id="confirm-modal-cancel">Cancel</button>
       <button type="button" class="btn-primary" id="confirm-modal-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Find someone by username and start a room with them ===== -->
+<div id="find-modal" class="modal hidden">
+  <div class="modal-card">
+    <h3>Find someone</h3>
+    <p class="modal-hint">
+      Search by username, then start a room together. Adding someone lets
+      them receive the encrypted traffic — they still can't read anything
+      until you give them the passphrase, outside Evolt.
+    </p>
+    <label>Username <input id="find-input" placeholder="at least 2 characters" autocomplete="off" /></label>
+    <div id="find-results" class="find-results"></div>
+    <p id="find-error" class="modal-error"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="find-modal-close">Close</button>
     </div>
   </div>
 </div>
@@ -361,6 +385,7 @@
 <script src="js/config.js"></script>
 <script src="js/vendor/pako.umd.min.js"></script>
 <script src="js/vendor/qrcode.js"></script>
+<script src="js/vendor/jsqr.js"></script>
 <script src="js/crypto.js"></script>
 <script src="js/webrtc.js"></script>
 <script src="js/pairing.js"></script>

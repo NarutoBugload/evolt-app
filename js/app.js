@@ -274,6 +274,7 @@ async function bootApp() {
   // so hide the control rather than let it fail on click.
   document.getElementById('new-room-btn').classList.toggle('hidden', localOnly);
   document.getElementById('join-room-btn').classList.toggle('hidden', localOnly);
+  document.getElementById('find-people-btn').classList.toggle('hidden', localOnly);
 
   if (!localOnly) {
     await ensureSocketIo();
@@ -341,6 +342,9 @@ function connectSocket() {
       setTimeout(() => el.remove(), 250);
     }
   });
+  // Someone added us to a room - show it without needing a manual refresh.
+  state.socket.on('rooms:changed', () => { refreshRoomList(); });
+
   state.socket.on('typing', ({ username, isTyping, userId }) => {
     if (userId === state.user.id) return;
     const el = document.getElementById('typing-indicator');
@@ -624,6 +628,7 @@ document.getElementById('passphrase-unlock').addEventListener('click', () => {
   setPassphrase(room.id, room.key_epoch, val);
   document.getElementById('passphrase-input').value = '';
   document.getElementById('passphrase-bar').classList.add('hidden');
+  updateKeyFingerprint();
   // Re-render current messages, attempting decryption now that we have a key.
   reloadMessages();
 });
@@ -636,6 +641,7 @@ async function promptForPassphrase(roomId, epoch, isCreatingRoom) {
   if (val) {
     setPassphrase(roomId, epoch, val);
     document.getElementById('passphrase-bar').classList.add('hidden');
+    updateKeyFingerprint();
     reloadMessages();
   }
 }
@@ -665,6 +671,30 @@ async function reloadMessages() {
 function renderRoomHeader() {
   const room = state.activeRoom;
   document.getElementById('epoch-badge').textContent = `EPOCH ${room.key_epoch}`;
+  updateKeyFingerprint();
+}
+
+// Shows a short, non-secret check value derived from the passphrase, so two
+// people can see at a glance whether they typed the same thing.
+//
+// Without this, a mistyped passphrase is invisible: pairing succeeds, the
+// channel opens, messages arrive - and every one of them renders as cipher
+// glyphs, with nothing on screen indicating that the KEY is the problem
+// rather than the connection. That is exactly how it was reported:
+// "messages come as encrypted even after pairing".
+//
+// Pinned to window 0 so it is a fingerprint of (room, epoch, passphrase)
+// only, and stays stable as the derivation window rotates - otherwise the
+// two devices would show different values purely because of timing.
+async function updateKeyFingerprint() {
+  const el = document.getElementById('key-fingerprint');
+  const room = state.activeRoom;
+  if (!el || !room) return;
+  const passphrase = getPassphrase(room.id, room.key_epoch);
+  if (!passphrase) return el.classList.add('hidden');
+  const fp = await VaultCrypto.keyFingerprint(passphrase, room.id, room.key_epoch, 0);
+  el.textContent = `KEY ${fp}`;
+  el.classList.remove('hidden');
 }
 
 // ---------- Rotation dial ticker (signature UI element) ----------
@@ -887,7 +917,14 @@ async function renderMessage(msg) {
   if (plaintext === null) {
     wrapper.classList.add('locked');
     wrapper.innerHTML = `<span class="lock-icon">🔒</span>${VaultCrypto.cipherGlyphs(msg.id)}`;
-    wrapper.title = 'Enter the room passphrase to decrypt this message';
+    // Two different reasons land here - no passphrase yet, or the wrong one -
+    // and they need different actions, so say which and make it fixable in
+    // place rather than leaving an inert block of glyphs.
+    wrapper.title = passphrase
+      ? 'Can’t decrypt with the current passphrase. Tap to re-enter it — check the KEY code matches on both devices.'
+      : 'Tap to enter the room passphrase.';
+    wrapper.style.cursor = 'pointer';
+    wrapper.addEventListener('click', () => promptForPassphrase(room.id, msg.key_epoch, false));
   } else if (msg.kind === 'file') {
     renderFileMessage(wrapper, msg, passphrase);
   } else {
@@ -1241,6 +1278,96 @@ document.getElementById('rail-toggle').addEventListener('click', () => {
   setRailOpen(!rail.classList.contains('open'));
 });
 railBackdrop.addEventListener('click', () => setRailOpen(false));
+
+// ---------- Finding someone by username ----------
+//
+// Search is debounced and needs a couple of characters, matching the
+// server's limits - see /api/users/search, which deliberately refuses to
+// hand out a directory of everyone.
+
+const findModal = document.getElementById('find-modal');
+let findTimer = null;
+
+document.getElementById('find-people-btn').addEventListener('click', () => {
+  document.getElementById('find-error').textContent = '';
+  document.getElementById('find-input').value = '';
+  document.getElementById('find-results').innerHTML = '';
+  setRailOpen(false);
+  findModal.classList.remove('hidden');
+  setTimeout(() => document.getElementById('find-input').focus(), 0);
+});
+document.getElementById('find-modal-close').addEventListener('click', () => {
+  findModal.classList.add('hidden');
+});
+
+document.getElementById('find-input').addEventListener('input', (e) => {
+  const q = e.currentTarget.value.trim();
+  clearTimeout(findTimer);
+  // Wait for a pause in typing rather than firing a query per keystroke.
+  findTimer = setTimeout(() => runUserSearch(q), 250);
+});
+
+async function runUserSearch(q) {
+  const results = document.getElementById('find-results');
+  const errEl = document.getElementById('find-error');
+  errEl.textContent = '';
+  if (q.length < 2) { results.innerHTML = ''; return; }
+
+  let users;
+  try {
+    users = await api(`/api/users/search?q=${encodeURIComponent(q)}`);
+  } catch (err) {
+    results.innerHTML = '';
+    errEl.textContent = err.message;
+    return;
+  }
+
+  results.innerHTML = '';
+  if (!users.length) {
+    const empty = document.createElement('div');
+    empty.className = 'find-empty';
+    empty.textContent = `Nobody found matching “${q}”.`;
+    results.appendChild(empty);
+    return;
+  }
+  users.forEach((u) => {
+    const row = document.createElement('div');
+    row.className = 'find-result';
+    const name = document.createElement('span');
+    name.className = 'uname';
+    name.textContent = u.username;
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.textContent = 'Start room';
+    btn.addEventListener('click', () => startRoomWith(u));
+    row.append(name, btn);
+    results.appendChild(row);
+  });
+}
+
+// Creates a room and adds them to it. They get the encrypted traffic; the
+// passphrase is still yours to hand over out-of-band, which is why this
+// finishes by asking you to set one.
+async function startRoomWith(user) {
+  const errEl = document.getElementById('find-error');
+  errEl.textContent = '';
+  try {
+    const room = await api('/api/rooms', {
+      method: 'POST',
+      body: JSON.stringify({ name: user.username, rotationSeconds: 300, disappearing: false }),
+    });
+    await api(`/api/rooms/${room.id}/invite`, {
+      method: 'POST',
+      body: JSON.stringify({ username: user.username }),
+    });
+    findModal.classList.add('hidden');
+    await refreshRoomList();
+    await openRoom(room.id);
+    promptForPassphrase(room.id, room.key_epoch, true);
+  } catch (err) {
+    errEl.textContent = `Couldn’t start that room: ${err.message}`;
+  }
+}
 
 // ---------- Joining an existing server-backed room ----------
 //

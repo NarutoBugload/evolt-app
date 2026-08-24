@@ -242,24 +242,60 @@ function drawQr(canvas, text, targetPx = 380) {
   return true;
 }
 
-// BarcodeDetector is the browser's built-in scanner. It exists on Android
-// Chrome and ChromeOS but not on most desktop builds, so scanning is offered
-// only where it actually works - the paste field is always there as the
-// route that works everywhere.
+// Scanning needs two things: a camera, and something that can read a QR out
+// of the frames.
+//
+// The browser's built-in BarcodeDetector is the nice option, but it is not
+// available where this app most needs it. Chrome on Android has it; the
+// Android WebView an APK actually runs inside generally does not, and nor do
+// most desktop browsers. Depending on it meant the scan button quietly did
+// not exist on the very platform the feature was for.
+//
+// So jsQR (vendored, Apache-2.0) decodes frames off a canvas instead. That
+// works anywhere getUserMedia does. BarcodeDetector is still used when
+// present, since it is faster and hardware-accelerated - but it is now an
+// optimisation rather than a requirement.
 function canScan() {
-  return typeof window.BarcodeDetector !== 'undefined' &&
-         !!navigator.mediaDevices?.getUserMedia;
+  return !!navigator.mediaDevices?.getUserMedia &&
+         (typeof window.BarcodeDetector !== 'undefined' || typeof window.jsQR === 'function');
+}
+
+function makeFrameReader() {
+  if (typeof window.BarcodeDetector !== 'undefined') {
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    return async (video) => {
+      const found = await detector.detect(video);
+      return found.length ? found[0].rawValue : null;
+    };
+  }
+
+  // Decode at most ~640px across: QR decoding cost scales with pixel count,
+  // and a phone camera frame is far larger than needed to read a code held
+  // up to it.
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  return async (video) => {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return null;                 // not producing frames yet
+    const scale = Math.min(1, 640 / Math.max(vw, vh));
+    canvas.width = Math.round(vw * scale);
+    canvas.height = Math.round(vh * scale);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const result = window.jsQR(data, width, height, { inversionAttempts: 'dontInvert' });
+    return result ? result.data : null;
+  };
 }
 
 /**
  * Opens the camera, scans until a QR is found, and returns its text.
  * The caller supplies a <video> to show the preview in.
- * @returns {Promise<string>} rejects if the camera is denied or it's stopped
+ * @returns {Promise<string>} rejects if the camera is refused or it's stopped
  */
 function scanQr(video, shouldStop) {
   return new Promise((resolve, reject) => {
-    if (!canScan()) return reject(new Error('This browser has no built-in QR scanner.'));
-    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    if (!canScan()) return reject(new Error('This device can’t scan — paste the code instead.'));
+    const readFrame = makeFrameReader();
     let stream = null;
 
     const cleanup = () => {
@@ -267,27 +303,49 @@ function scanQr(video, shouldStop) {
       video.srcObject = null;
     };
 
-    navigator.mediaDevices
-      // 'environment' asks for the rear camera on a phone, which is the one
-      // pointed at the other person's screen.
-      .getUserMedia({ video: { facingMode: 'environment' } })
+    // Ask for the rear camera - the one pointed at the other person's
+    // screen - but never insist on it. Some devices have only a front
+    // camera, and a device that cannot satisfy the constraint rejects with
+    // NotFoundError rather than quietly picking another, which would have
+    // meant "no camera at all" on any tablet or laptop.
+    const openCamera = async () => {
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+        });
+      } catch (e) {
+        if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) throw e;
+        return navigator.mediaDevices.getUserMedia({ video: true });
+      }
+    };
+
+    openCamera()
       .then(async (s) => {
         stream = s;
         video.srcObject = s;
+        video.setAttribute('playsinline', '');   // iOS refuses to inline otherwise
         await video.play();
         const tick = async () => {
           if (shouldStop && shouldStop()) { cleanup(); return reject(new Error('Scan cancelled.')); }
           try {
-            const found = await detector.detect(video);
-            if (found.length) { cleanup(); return resolve(found[0].rawValue); }
+            const text = await readFrame(video);
+            if (text) { cleanup(); return resolve(text); }
           } catch (e) {
-            // A transient decode failure is normal between frames.
+            // A frame that fails to decode is the normal case, not an error.
           }
           requestAnimationFrame(tick);
         };
         tick();
       })
-      .catch((e) => { cleanup(); reject(new Error(`Camera unavailable: ${e.message}`)); });
+      .catch((e) => {
+        cleanup();
+        // Tell people which of the two failures they hit, because the fixes
+        // are completely different.
+        const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+        reject(new Error(denied
+          ? 'Camera permission was refused. Allow camera access for Evolt in your device settings, or paste the code instead.'
+          : `Couldn’t open the camera (${e.name || e.message}). Paste the code instead.`));
+      });
   });
 }
 

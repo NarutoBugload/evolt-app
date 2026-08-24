@@ -9,6 +9,12 @@ change without this repo changing. Both are unacceptable here.
 |---|---|---|---|
 | `pako.umd.min.js` | [pako](https://github.com/nodeca/pako) | 3.x | MIT |
 | `qrcode.js` | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | 2.0.4 | MIT |
+| `jsqr.js` | [jsQR](https://github.com/cozmo/jsQR) | 1.4.0 | Apache-2.0 |
+
+`jsqr.js` reads QR codes from camera frames. The browser's own
+`BarcodeDetector` would be lighter, but Android's WebView - which is what an
+APK actually runs inside - does not expose it, so relying on it meant
+scanning silently did not exist on the one platform it was built for.
 
 Both are the unmodified browser builds from the corresponding npm package.
 To update one, copy the build out of `node_modules/` again rather than
